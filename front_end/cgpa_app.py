@@ -167,7 +167,9 @@ def subject_grade_input(semester, department_code):
                 "email": st.session_state.get("user_email"),
                 "cgpa": round(cgpa, 2),
                 "semester": semester,
-                "department": st.session_state.get("department_id")
+                "department": st.session_state.get("department_id"),
+                "total_credits":total_credits,
+                "total_grade_points": total_points
             })
 
             if response.status_code == 201:
@@ -231,6 +233,23 @@ def main():
                 if st.session_state.get("is_admin"):
                     admin_dashboard()
                     return
+                
+                if st.button("Calculate Overall CGPA"):
+                    email = st.session_state.get("user_email")
+                    dept_id = st.session_state.get("department_id")
+                    try:
+                        res = requests.get(f"{BACKEND_URL}/calculate-cgpa/", params={"email": email,"dept_id":dept_id})
+                        print("CGPA API raw response:", res.text)
+
+                        if res.status_code == 200:
+                            data = res.json()
+                            cgpa = data.get("overall_cgpa")
+                            semester_count = data.get("semester_count")
+                            st.success(f"Your Overall CGPA is: **{cgpa}** (calculated from {semester_count} semesters)")
+                        else:
+                            st.warning(res.json().get("error", "Could not fetch CGPA"))
+                    except Exception as e:
+                        st.error(f"Error occurred: {e}")
 
                 if st.button("View Logs"):
                     email = st.session_state.get("user_email")

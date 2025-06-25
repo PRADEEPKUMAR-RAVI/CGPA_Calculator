@@ -91,6 +91,13 @@ def list_semesters(request):
 @api_view(["POST"])
 def save_results(request):
     data = request.data
+    email = data.get("email")
+    semester = data.get("semester")
+    if not email or not semester:
+        return Response({"error":"email and semester are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    UserResult.objects.filter(email=email,semester=semester).delete() 
+
     serializer = UserSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
@@ -119,3 +126,23 @@ def admin_all_results(request):
     paginated = paginator.paginate_queryset(results, request)
     serializer = UserSerializer(paginated, many=True)
     return paginator.get_paginated_response(serializer.data)
+
+
+@api_view(["GET"])
+def calculate_overall_cgpa(request):
+    email = request.query_params.get("email")
+    results = UserResult.objects.filter(email=email)
+
+    total_credits = 0
+    total_grade_points = 0.0
+
+    for res in results:
+        total_credits += res.total_credits
+        total_grade_points += res.total_grade_points
+
+    if total_credits == 0:
+        return Response({"error": "No credits found."}, status=400)
+
+    cgpa = round(total_grade_points / total_credits, 2)
+    return Response({"cgpa": cgpa, "semester_count": results.count()})
+
