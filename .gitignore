@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+
+# Environment
+.env
+.venv/
+
+# VSCode
+.vscode/
+
+# Django
+db.sqlite3
+/static/
+/media/
+
+# Streamlit
+*.streamlit/
+
+# OS
+.DS_Store
+Thumbs.db
