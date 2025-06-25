@@ -51,3 +51,8 @@ python manage.py runserver
 
 cd front_end
 streamlit run cgpa_app.py
+
+## Admin email and pass
+
+admin@gmail.com
+admin1234
