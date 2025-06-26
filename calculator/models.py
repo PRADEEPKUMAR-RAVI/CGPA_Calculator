@@ -37,11 +37,13 @@ class Subject(models.Model):
 
 class UserResult(models.Model):
     email = models.EmailField()
-    cgpa = models.FloatField()
+    cgpa = models.CharField()
     semester = models.IntegerField(default=1)
-    department = models.ForeignKey(Department, on_delete=models.CASCADE,null=False)
+    department = models.ForeignKey(Department, on_delete=models.CASCADE,null=True,blank=True)
+    total_credits = models.IntegerField(default=0)             
+    total_grade_points = models.FloatField(default=0.0)        
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.email} - CGPA: {self.cgpa} - Dept: {self.department.code}"
+        return f"{self.email} - CGPA: {self.cgpa}"
     

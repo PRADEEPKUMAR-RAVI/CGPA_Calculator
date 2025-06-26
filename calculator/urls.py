@@ -10,4 +10,6 @@ urlpatterns = [
     path("save-result/", views.save_results),
     path("user-history/", views.user_historys),
     path('admin-results/',views.admin_all_results),
+    path("calculate-cgpa/", views.calculate_overall_cgpa),
+    path("delete-result/", views.delete_result),
 ]
