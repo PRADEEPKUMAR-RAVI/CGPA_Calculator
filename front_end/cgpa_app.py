@@ -239,32 +239,78 @@ def main():
                     dept_id = st.session_state.get("department_id")
                     try:
                         res = requests.get(f"{BACKEND_URL}/calculate-cgpa/", params={"email": email,"dept_id":dept_id})
-                        print("CGPA API raw response:", res.text)
 
                         if res.status_code == 200:
                             data = res.json()
-                            cgpa = data.get("overall_cgpa")
+                            cgpa = data.get("cgpa")
                             semester_count = data.get("semester_count")
                             st.success(f"Your Overall CGPA is: **{cgpa}** (calculated from {semester_count} semesters)")
                         else:
                             st.warning(res.json().get("error", "Could not fetch CGPA"))
                     except Exception as e:
                         st.error(f"Error occurred: {e}")
+                
+                
+                delete_target = st.session_state.pop("delete_target", None)
+                if delete_target:
+                    # st.write("Deleting record for:", delete_target) 
+                    # print("Deleting record for:", delete_target) 
+                    try:
+                        delete_res = requests.delete(
+                            f"{BACKEND_URL}/delete-result/",
+                            params=delete_target
+                        )
+                        if delete_res.status_code == 200:
+                            st.success(f"Deleted Semester {delete_target['semester']} result.")
+                        else:
+                            st.error("Failed to delete result.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error occurred: {e}")
+                        st.rerun()
 
-                if st.button("View Logs"):
+    
+                if st.button("View & Manage Logs"):
+                    st.session_state["view_logs"] = True
+                    st.session_state["delete_target"] = None
+                    st.rerun()
+
+                if st.session_state.get("view_logs"):
                     email = st.session_state.get("user_email")
-                    res = requests.get(f"{BACKEND_URL}/user-history/", params={"email": email})
+                    dept_id = st.session_state.get("department_id")
+
+                    res = requests.get(f"{BACKEND_URL}/user-history/", params={
+                        "email": email,
+                        "dept_id": dept_id
+                    })
+
                     if res.status_code == 200:
                         history = res.json().get("history", [])
                         if history:
-                            st.markdown("### Your CGPA History:")
+                            st.markdown("### Your CGPA History (with Delete Option):")
                             for item in history:
-                                st.markdown(f"- Semester {item['semester']} → **CGPA: {item['cgpa']}** → **Dept_Code:{item['department']}** → at {item['created_at']}")
+                                if str(item["department"]) == str(dept_id):
+                                    col1, col2 = st.columns([4, 1])
+                                    with col1:
+                                        st.markdown(
+                                            f"Semester {item['semester']} → **CGPA: {item['cgpa']}** → at {item['created_at']}"
+                                        )
+                                    with col2:
+                                        delete_key = f"delete_{item['semester']}"
+                                        if st.button("❌", key=delete_key):
+                                            st.session_state["delete_target"] = {
+                                                "email": email,
+                                                "semester": item["semester"],
+                                                "department": dept_id
+                                            }
+                                            st.rerun()
                         else:
                             st.info("No history found.")
                     else:
                         st.error("Failed to fetch history.")
 
+
+                
                 semesters = fetch_semesters()
                 semester = st.selectbox("Select your Semester", semesters)
                 if semester:

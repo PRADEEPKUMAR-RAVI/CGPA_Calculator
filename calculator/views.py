@@ -92,11 +92,12 @@ def list_semesters(request):
 def save_results(request):
     data = request.data
     email = data.get("email")
+    department = data.get("department")
     semester = data.get("semester")
     if not email or not semester:
         return Response({"error":"email and semester are required"}, status=status.HTTP_400_BAD_REQUEST)
 
-    UserResult.objects.filter(email=email,semester=semester).delete() 
+    UserResult.objects.filter(email=email,semester=semester,department=department).delete() 
 
     serializer = UserSerializer(data=data)
     if serializer.is_valid():
@@ -108,10 +109,15 @@ def save_results(request):
 @api_view(["GET"])
 def user_historys(request):
     email = request.query_params.get("email")
+    department = request.query_params.get("dept_id")
     if not email:
         return Response({"error":"email required"},status=status.HTTP_401_UNAUTHORIZED)
+    try:
+        department = Department.objects.get(id=department)
+    except Department.DoesNotExist:
+        return Response({"error": "Invalid department ID"}, status=status.HTTP_404_NOT_FOUND)
     
-    results = UserResult.objects.filter(email=email).order_by('-created_at')
+    results = UserResult.objects.filter(email=email,department=department).order_by('created_at')
     paginator = DynamicPageNumberPagination()
     paginated = paginator.paginate_queryset(results,request)
     serializer = UserSerializer(paginated, many=True)
@@ -131,8 +137,9 @@ def admin_all_results(request):
 @api_view(["GET"])
 def calculate_overall_cgpa(request):
     email = request.query_params.get("email")
-    results = UserResult.objects.filter(email=email)
-
+    department = request.query_params.get("dept_id")
+    results = UserResult.objects.filter(email=email,department=department)
+    print("results for oacgpa--------------------------",results)
     total_credits = 0
     total_grade_points = 0.0
 
@@ -145,4 +152,27 @@ def calculate_overall_cgpa(request):
 
     cgpa = round(total_grade_points / total_credits, 2)
     return Response({"cgpa": cgpa, "semester_count": results.count()})
+
+@api_view(["DELETE"])
+def delete_result(request):
+    email = request.query_params.get("email")
+    print("email--------",email)
+    semester = request.query_params.get("semester")
+    print("semester---------------",semester)
+    department = request.query_params.get("department")
+    print("department-------------",department)
+    
+    if not email or not semester or not department:
+        return Response({"error": "Missing params"}, status=400)
+
+    deleted, _ = UserResult.objects.filter(
+        email=email,
+        semester=semester,
+        department=department
+    ).delete()
+
+    if deleted:
+        return Response({"message": "Record deleted"}, status=200)
+    else:
+        return Response({"error": "Record not found"}, status=404)
 
