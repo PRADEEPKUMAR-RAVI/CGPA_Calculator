@@ -5,11 +5,13 @@ from rest_framework.permissions import IsAdminUser
 from django.utils import timezone
 from datetime import timedelta
 from .models import Semester, UserResult,Department,Subject
-from rest_framework.decorators import api_view,permission_classes
+from rest_framework.decorators import api_view,permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
 from drf_yasg.utils import swagger_auto_schema
 from calculator.pagination import DynamicPageNumberPagination
+from rest_framework.permissions import IsAdminUser
+from rest_framework_simplejwt.authentication import JWTAuthentication
 from .serializers import UserSerializer,SubjectSerializer,DepartmentSerializer, EmailSerializer
 
 @api_view(["GET"])
@@ -17,8 +19,6 @@ def list_departments(request):
     departments = Department.objects.all()
     serializer = DepartmentSerializer(departments, many=True)
     return Response({"departments": serializer.data}, status=status.HTTP_200_OK)
-
-
 
 
 @api_view(["POST"])
@@ -125,6 +125,8 @@ def user_historys(request):
 
 
 @api_view(["GET"])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAdminUser])
 def admin_all_results(request):
     paginator = DynamicPageNumberPagination()
     paginator.page_size = 5

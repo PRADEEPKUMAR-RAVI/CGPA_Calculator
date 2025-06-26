@@ -38,26 +38,36 @@ def fetch_semesters():
     return []
 
 def admin_authenticate():
-    st.title("Admin Authentication")
+    st.title("Admin Login")
 
-    email = st.text_input("Admin Email")
+    email = st.text_input("Admin Username")
     password = st.text_input("Admin password", type="password")
+    if st.button("Login"):
 
-    if email and is_valid_email(email=email):
-        if email == "admin@gmail.com" and password == "admin1234":
-            st.session_state["is_admin"] = True
-            st.session_state.pop("admin_auth_pending", None)
-            st.rerun()
+            try:
+                res = requests.post(f"{BACKEND_URL}/token/",json={"username": email, "password": password})
+                if res.status_code == 200:
+                    token = res.json()
+                    access_token = token.get("access")
+                    st.session_state["admin_token"]= access_token
+                    print(st.session_state.get("admin_token"))
+                    st.session_state["is_admin"] = True
+                    st.session_state["admin_auth_pending"] = False
+                    st.success("Admin Authenticated")
+                    st.rerun()
+                else:
+                    st.error(f"Unauthorized - {res.status_code}")
+            except Exception as e:
+                st.error(f"Login failed - {e}")
 
-        else:
-            st.error("Invalid Credentials")
-    else:
-        st.error("Invalid email")
+
+            
 
 
 def fetch_admin_results(page):
+    headers = {"Authorization":f"Bearer {st.session_state.get('admin_token')}"}
     try:
-        res = requests.get(f"{BACKEND_URL}/admin-results/?page={page}")
+        res = requests.get(f"{BACKEND_URL}/admin-results/?page={page}", headers=headers)
         if res.status_code == 200:
             data = res.json()
             count = data.get("count", 0)
@@ -100,7 +110,7 @@ def admin_dashboard():
         --------------------------
         """)
 
-    if st.button("Exit"):
+    if st.sidebar.button("Log Out"):
         st.session_state["admin_auth_pending"] = False
         st.session_state["is_admin"] = False
         st.rerun()
@@ -180,10 +190,31 @@ def subject_grade_input(semester, department_code):
             st.warning("No valid grades to calculate CGPA.")
 
 def main():
+    
+    st.sidebar.markdown("## Admin Panel")
 
-    st.title("CGPA Calculator 🎓")
+    if "admin_auth_pending" not in st.session_state:
+        st.session_state["admin_auth_pending"] = False
+
+    if "is_admin" not in st.session_state:
+        st.session_state["is_admin"] = False
+
+    if st.sidebar.button("Show All Logs (Admin Only)"):
+        st.session_state["admin_auth_pending"] = True
+        st.session_state["is_admin"] = False
+        st.rerun()
+
+    if st.session_state["admin_auth_pending"] and not st.session_state["is_admin"]:
+        admin_authenticate() 
+        st.stop()
+
+    if st.session_state["is_admin"]:
+        admin_dashboard()
+        st.stop()
 
     
+    
+    st.title("CGPA Calculator 🎓")
     try:
         response = requests.get(f"{BACKEND_URL}/departments/")
         response.raise_for_status()
@@ -223,17 +254,7 @@ def main():
                     st.error("OTP verification failed. " + verify_result.get("error", ""))
 
             if st.session_state.get("email_verified") and st.session_state.get("department_code"):
-                if st.button("Show All Logs (Admin Only)"):
-                    st.session_state["admin_auth_pending"] = True
-                    st.rerun()
 
-                if st.session_state.get("admin_auth_pending"):
-                    admin_authenticate()
-                    return
-                if st.session_state.get("is_admin"):
-                    admin_dashboard()
-                    return
-                
                 if st.button("Calculate Overall CGPA"):
                     email = st.session_state.get("user_email")
                     dept_id = st.session_state.get("department_id")
